@@ -243,6 +243,22 @@ namespace ServiceStack.OrmLite
             return dbCmd.ExecuteNonQuery();
         }
 
+        internal static int ExecuteSql(this IDbCommand dbCmd, string sql, object anonType)
+        {
+            if (anonType != null)
+                dbCmd.SetParameters(anonType, excludeDefaults: false);
+
+            dbCmd.CommandText = sql;
+
+            if (Log.IsDebugEnabled)
+                Log.DebugCommand(dbCmd);
+
+            if (OrmLiteConfig.ResultsFilter != null)
+                return OrmLiteConfig.ResultsFilter.ExecuteSql(dbCmd);
+
+            return dbCmd.ExecuteNonQuery();
+        }
+
         private static bool IgnoreAlreadyExistsError(Exception ex)
         {
             //ignore Sqlite table already exists error
@@ -285,10 +301,19 @@ namespace ServiceStack.OrmLite
         {
             try
             {
-                if (values == null)
-                    values = new object[reader.FieldCount];
+                if (!OrmLiteConfig.DeoptimizeReader)
+                {
+                    if (values == null)
+                        values = new object[reader.FieldCount];
 
-                reader.GetValues(values);
+                    reader.GetValues(values);
+                }
+                else
+                {
+                    //Calling GetValues() on System.Data.SQLite.Core ADO.NET Provider changes behavior of reader.GetGuid()
+                    //So allow providers to by-pass reader.GetValues() optimization.
+                    values = null;
+                }
 
                 foreach (var fieldCache in indexCache)
                 {
@@ -296,7 +321,7 @@ namespace ServiceStack.OrmLite
                     var index = fieldCache.Item2;
                     var converter = fieldCache.Item3;
 
-                    if (values[index] == DBNull.Value)
+                    if (values != null && values[index] == DBNull.Value)
                     {
                         var value = fieldDef.IsNullable ? null : fieldDef.FieldTypeDefaultValue;
                         if (OrmLiteConfig.OnDbNullFilter != null)
@@ -311,8 +336,23 @@ namespace ServiceStack.OrmLite
                     else
                     {
                         var value = converter.GetValue(reader, index, values);
-                        var fieldValue = converter.FromDbValue(fieldDef.FieldType, value);
-                        fieldDef.SetValueFn(objWithProperties, fieldValue);
+                        if (value == null)
+                        {
+                            if (!fieldDef.IsNullable)
+                                value = fieldDef.FieldTypeDefaultValue;
+                            if (OrmLiteConfig.OnDbNullFilter != null)
+                            {
+                                var useValue = OrmLiteConfig.OnDbNullFilter(fieldDef);
+                                if (useValue != null)
+                                    value = useValue;
+                            }
+                            fieldDef.SetValueFn(objWithProperties, value);
+                        }
+                        else
+                        {
+                            var fieldValue = converter.FromDbValue(fieldDef.FieldType, value);
+                            fieldDef.SetValueFn(objWithProperties, fieldValue);
+                        }
                     }
                 }
             }

@@ -115,8 +115,10 @@
   <ItemGroup>
     <Compile Include="AdminTasks.cs" />
     <Compile Include="AdoNetDataAccessTests.cs" />
-    <Compile Include="ApiSqlServerTests.cs" />
+    <Compile Include="ApiSqliteTests.Parameterized.cs" />
+    <Compile Include="ApiSqlServerTests.Parameterized.cs" />
     <Compile Include="ApiSqliteTests.cs" />
+    <Compile Include="ApiSqlServerTests.cs" />
     <Compile Include="CaptureSqlCommandFilterTests.cs" />
     <Compile Include="CaptureSqlFilterTests.cs" />
     <Compile Include="CompositeKeyTests.cs" />
@@ -141,6 +143,7 @@
     <Compile Include="Issues\CreateTableAliasTest.cs" />
     <Compile Include="Issues\CsvTests.cs" />
     <Compile Include="Issues\CustomFieldTests.cs" />
+    <Compile Include="Issues\CustomTypeTests.cs" />
     <Compile Include="Issues\LoadReferencesCaseSensitiveTest.cs" />
     <Compile Include="Issues\LoadReferencesForeignKeyTests.cs" />
     <Compile Include="Issues\LoadSelectIssue.cs" />
